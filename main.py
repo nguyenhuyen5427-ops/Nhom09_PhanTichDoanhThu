@@ -15,10 +15,10 @@ def main():
         loader = DataLoader(data_file)
         loader.load_data()
         loader.clean_data()
-        analyzer = SalesAnalyzer()
+        analyzer = SalesAnalyzer(loader.df)
         analyzer.analyze_data()
         
-        visualizer = SalesVisualizer()
+        visualizer = SalesVisualizer(loader.df)
         visualizer.plot_charts()
         
         print("=== CHƯƠNG TRÌNH KẾT THÚC THÀNH CÔNG ===")
