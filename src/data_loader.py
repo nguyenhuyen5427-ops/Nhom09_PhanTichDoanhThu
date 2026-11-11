@@ -8,6 +8,7 @@ class DataLoader:
     def __init__(self, file_path: str | Path):
         self.file_path = Path(file_path)
         self.df = None
+        self.log = []  
 
     def load_data(self):
         try:
@@ -43,10 +44,6 @@ class DataLoader:
         
 """Chuẩn hóa Order Date và Ship Date cho dự án phân tích doanh thu."""
 
-import logging
-from pathlib import Path
-
-import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -217,4 +214,7 @@ if __name__ == "__main__":
 
         logging.info(f"[Ly] Số dòng sau khi xóa trùng lặp: {final_rows}")
         return self.df
+
+
+
 

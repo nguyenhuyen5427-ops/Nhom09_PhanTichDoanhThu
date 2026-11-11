@@ -1,5 +1,6 @@
 from pathlib import Path
 from src.data_loader import DataLoader
+from src.clean_data import export_all
 from src.sales_analyzer import SalesAnalyzer
 from src.sales_visualizer import SalesVisualizer
 
@@ -15,6 +16,8 @@ def main():
         loader = DataLoader(data_file)
         loader.load_data()
         loader.clean_data()
+        # Xuất dữ liệu đã làm sạch
+        export_all(data_file, loader.df, base_path)
         analyzer = SalesAnalyzer(loader.df)
         analyzer.analyze_data()
         
@@ -28,3 +31,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
