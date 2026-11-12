@@ -7,6 +7,19 @@ class SalesAnalyzer:
     def __init__(self, df=None):
         self.df = df
 
+    @staticmethod
+    def _parse_dates(dates):
+        """Chuyển cột ngày về datetime mà không đảo tháng/ngày.
+
+        - Đã là datetime (dữ liệu sạch trong bộ nhớ): giữ nguyên.
+        - Chuỗi dd/mm/yyyy (dữ liệu thô) hoặc yyyy-mm-dd (CSV sạch): đọc đúng từng loại.
+        Không dùng dayfirst=True với chuỗi ISO vì sẽ đảo tháng/ngày.
+        """
+        if pd.api.types.is_datetime64_any_dtype(dates):
+            return dates
+        parsed = pd.to_datetime(dates, format='%d/%m/%Y', errors='coerce')
+        return parsed.fillna(pd.to_datetime(dates, format='%Y-%m-%d', errors='coerce'))
+
     def analyze_data(self):
         try:
             if self.df is None:
@@ -16,7 +29,7 @@ class SalesAnalyzer:
             
             # --- TỰ ĐỘNG CHUẨN HÓA VÀ TRÍCH XUẤT NĂM NẾU CỘT 'Year' CHƯA TỒN TẠI ---
             if 'Year' not in self.df.columns:
-                self.df['Order Date'] = pd.to_datetime(self.df['Order Date'], format='mixed', dayfirst=True)
+                self.df['Order Date'] = self._parse_dates(self.df['Order Date'])
                 self.df['Year'] = self.df['Order Date'].dt.year
             
             print("\n" + "="*45)
@@ -92,12 +105,7 @@ class SalesAnalyzer:
             data = self.df[required_columns].copy()
 
             # Chuẩn hóa dữ liệu ngày và doanh thu
-            data["Order Date"] = pd.to_datetime(
-                data["Order Date"],
-                format="mixed",
-                dayfirst=True,
-                errors="coerce"
-            )
+            data["Order Date"] = self._parse_dates(data["Order Date"])
 
             data["Sales"] = pd.to_numeric(
                 data["Sales"],
@@ -313,3 +321,176 @@ class SalesAnalyzer:
                 e
             )
             return None
+
+    # ==================================================================
+    # PHẦN CỦA LY (Giai đoạn 2): Câu 3 & Câu 4
+    # ==================================================================
+
+    def _get_order_year(self):
+        """Lấy năm đặt hàng mà không sửa self.df (dùng cột Year nếu đã có)."""
+        if 'Year' in self.df.columns:
+            return self.df['Year']
+
+        dates = self.df['Order Date']
+        if not pd.api.types.is_datetime64_any_dtype(dates):
+            # Dữ liệu thô là dd/mm/yyyy; dữ liệu sạch xuất ra CSV là yyyy-mm-dd.
+            # Không dùng dayfirst=True với chuỗi ISO vì sẽ đảo tháng/ngày.
+            parsed = pd.to_datetime(dates, format='%d/%m/%Y', errors='coerce')
+            dates = parsed.fillna(pd.to_datetime(dates, format='%Y-%m-%d', errors='coerce'))
+        return dates.dt.year
+
+    @staticmethod
+    def _add_growth(yearly):
+        """Thêm mức tăng tuyệt đối và % giữa năm đầu và năm cuối của bảng Nhóm x Năm."""
+        first_year, last_year = yearly.columns.min(), yearly.columns.max()
+        table = yearly.copy()
+        table['Tổng'] = yearly.sum(axis=1)
+        table['Tăng tuyệt đối'] = yearly[last_year] - yearly[first_year]
+        # Năm đầu = 0 thì không tính được % (tránh chia cho 0)
+        table['Tăng (%)'] = (
+            table['Tăng tuyệt đối'] / yearly[first_year].where(yearly[first_year].ne(0)) * 100
+        )
+        return table, first_year, last_year
+
+    def analyze_region(self):
+        """Câu 3: Doanh thu theo khu vực (Region). Phân công: Ly."""
+        try:
+            if self.df is None or self.df.empty:
+                logging.warning("Không có dữ liệu để phân tích khu vực.")
+                return None
+
+            missing = [c for c in ('Region', 'Sales') if c not in self.df.columns]
+            if missing:
+                logging.error("Thiếu cột cần thiết: %s", ", ".join(missing))
+                return None
+
+            data = self.df[['Region', 'Sales']].copy()
+            data['Year'] = self._get_order_year()
+            data = data.dropna(subset=['Region', 'Sales', 'Year'])
+            data['Year'] = data['Year'].astype(int)
+
+            yearly = data.pivot_table(
+                index='Region', columns='Year', values='Sales',
+                aggfunc='sum', fill_value=0
+            )
+            table, first_year, last_year = self._add_growth(yearly)
+            table['Tỷ trọng (%)'] = table['Tổng'] / table['Tổng'].sum() * 100
+            table = table.sort_values('Tổng', ascending=False)
+
+            print("\n" + "=" * 55)
+            print("--- PHẦN CỦA LY: CÂU 3 - DOANH THU THEO KHU VỰC ---")
+            print("=" * 55)
+            print(f"\nBảng doanh thu theo khu vực qua các năm "
+                  f"(tăng trưởng tính từ {first_year} đến {last_year}):")
+            print(table.round(2).to_string())
+
+            best, worst = table.index[0], table.index[-1]
+            fastest = table['Tăng (%)'].idxmax()
+            print(
+                f"\nKhu vực doanh thu cao nhất: {best} "
+                f"({table.loc[best, 'Tổng']:,.2f}, {table.loc[best, 'Tỷ trọng (%)']:.2f}%)."
+            )
+            print(
+                f"Khu vực doanh thu thấp nhất: {worst} "
+                f"({table.loc[worst, 'Tổng']:,.2f}, {table.loc[worst, 'Tỷ trọng (%)']:.2f}%)."
+            )
+            print(
+                f"Khu vực tăng nhanh nhất {first_year}-{last_year}: {fastest} "
+                f"(+{table.loc[fastest, 'Tăng tuyệt đối']:,.2f}, "
+                f"{table.loc[fastest, 'Tăng (%)']:.2f}%)."
+            )
+
+            return {"region_table": table, "region_by_year": yearly}
+
+        except Exception as e:
+            logging.error("Lỗi khi phân tích doanh thu theo khu vực: %s", e)
+            return None
+
+    def analyze_top_subcategory(self, top_n=5):
+        """Câu 4: Top 5 Sub-Category tăng trưởng mạnh nhất. Phân công: Ly.
+
+        Xếp hạng theo MỨC TĂNG TUYỆT ĐỐI (năm đầu -> năm cuối) và hiển thị kèm
+        % tăng, vì chỉ xếp theo % sẽ bị nhiễu bởi các nhóm có doanh thu gốc nhỏ.
+        """
+        try:
+            if self.df is None or self.df.empty:
+                logging.warning("Không có dữ liệu để phân tích Sub-Category.")
+                return None
+
+            missing = [c for c in ('Sub-Category', 'Sales') if c not in self.df.columns]
+            if missing:
+                logging.error("Thiếu cột cần thiết: %s", ", ".join(missing))
+                return None
+
+            data = self.df[['Sub-Category', 'Sales']].copy()
+            data['Year'] = self._get_order_year()
+            data = data.dropna(subset=['Sub-Category', 'Sales', 'Year'])
+            data['Year'] = data['Year'].astype(int)
+
+            yearly = data.pivot_table(
+                index='Sub-Category', columns='Year', values='Sales',
+                aggfunc='sum', fill_value=0
+            )
+            table, first_year, last_year = self._add_growth(yearly)
+
+            top_abs = table.sort_values('Tăng tuyệt đối', ascending=False).head(top_n)
+            top_pct = table.sort_values('Tăng (%)', ascending=False).head(top_n)
+            top_total = table.sort_values('Tổng', ascending=False).head(top_n)
+
+            print("\n" + "=" * 55)
+            print(f"--- PHẦN CỦA LY: CÂU 4 - TOP {top_n} SUB-CATEGORY ---")
+            print("=" * 55)
+            print(f"\n[Bảng chính] Top {top_n} theo mức tăng tuyệt đối "
+                  f"{first_year} -> {last_year} (kèm % tăng):")
+            print(top_abs.round(2).to_string())
+
+            print(f"\n[Đối chiếu] Top {top_n} nếu chỉ xếp theo % tăng "
+                  f"(dễ bị nhiễu bởi nhóm có doanh thu gốc nhỏ):")
+            print(top_pct.round(2).to_string())
+
+            print(f"\n[Tham khảo] Top {top_n} theo tổng doanh thu cả giai đoạn:")
+            print(top_total.round(2).to_string())
+
+            leader = top_abs.index[0]
+            pct_leader = top_pct.index[0]
+            print(
+                f"\nNhận xét: {leader} tăng nhiều nhất về giá trị tuyệt đối "
+                f"(+{top_abs.loc[leader, 'Tăng tuyệt đối']:,.2f}, "
+                f"{top_abs.loc[leader, 'Tăng (%)']:.2f}%)."
+            )
+            base = table.loc[pct_leader, first_year]
+            if pct_leader == leader:
+                print(
+                    f"{pct_leader} cũng dẫn đầu về % tăng ({top_pct.loc[pct_leader, 'Tăng (%)']:.2f}%), "
+                    f"nhưng doanh thu năm {first_year} chỉ {base:,.2f} nên % lớn một phần do mức gốc thấp; "
+                    f"nên đọc cùng mức tăng tuyệt đối."
+                )
+            else:
+                print(
+                    f"{pct_leader} có % tăng cao nhất ({top_pct.loc[pct_leader, 'Tăng (%)']:.2f}%) "
+                    f"nhưng doanh thu năm {first_year} chỉ {base:,.2f}, nên % bị phóng đại bởi mức gốc thấp."
+                )
+            decliners = table[table['Tăng tuyệt đối'] < 0]
+            if not decliners.empty:
+                print("Nhóm giảm doanh thu: " + ", ".join(
+                    f"{name} ({row['Tăng tuyệt đối']:,.2f})"
+                    for name, row in decliners.iterrows()
+                ) + ".")
+
+            return {
+                "subcategory_table": table,
+                "top_by_absolute_growth": top_abs,
+                "top_by_percent_growth": top_pct,
+                "top_by_total": top_total,
+            }
+
+        except Exception as e:
+            logging.error("Lỗi khi phân tích Top Sub-Category: %s", e)
+            return None
+
+    def analyze_region_and_subcategory(self):
+        """Chạy Câu 3 và Câu 4 (phần của Ly)."""
+        return {
+            "cau3": self.analyze_region(),
+            "cau4": self.analyze_top_subcategory(),
+        }
