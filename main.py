@@ -16,6 +16,7 @@ def main():
         loader = DataLoader(data_file)
         loader.load_data()
         loader.clean_data()
+        loader.remove_duplicates()
         # Xuất dữ liệu đã làm sạch
         export_all(data_file, loader.df, base_path)
         analyzer = SalesAnalyzer(loader.df)
