@@ -16,7 +16,7 @@ class DateCleaner:
     START_DATE = pd.Timestamp("2015-01-03")
     END_DATE = pd.Timestamp("2018-12-30")
 
-    def __init__(self, df: pd.DataFrame, check_ship_date_range: bool = True) -> None:
+    def __init__(self, df: pd.DataFrame, check_ship_date_range: bool = False) -> None:
         if not isinstance(df, pd.DataFrame):
             raise TypeError("df phải là một pandas DataFrame.")
 
