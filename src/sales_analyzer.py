@@ -60,6 +60,9 @@ class SalesAnalyzer:
             )
             print("\n[Câu 2b] Chi tiết biến động doanh thu 3 danh mục qua các năm:")
             print(cat_yearly.round(2))
+            if not cat_total.empty:
+                top_category = cat_total.iloc[0]["Category"]
+                self.analyze_top_category_monthly(top_category)
             
             print("-" * 45)
         
