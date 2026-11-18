@@ -496,24 +496,66 @@ class SalesAnalyzer:
             "cau4": self.analyze_top_subcategory(),
         }
     # ==================================================================
+   
     def analyze_segment_seasonality(self):
         """
-        Câu 6: Phân tích và so sánh tính mùa vụ (tháng) theo phân khúc khách hàng
+        Câu 6: Phân tích tính mùa vụ theo phân khúc khách hàng.
         """
         try:
-            if self.df is None:
-                raise ValueError("DataFrame đang trống hoặc chưa được nạp.")
-            
-            logging.info("Đang thực hiện phân tích tính mùa vụ theo phân khúc...")
-            
-            # Gom nhóm dữ liệu theo Segment và Month, tính tổng Sales
-            segment_seasonality = self.df.groupby(['Segment', 'Month'])['Sales'].sum().reset_index()
-            
-            return segment_seasonality
-            
+            if self.df is None or self.df.empty:
+                logging.warning("DataFrame đang trống.")
+                return None
+
+            required = ["Segment", "Order Date", "Sales"]
+            missing = [
+                col for col in required
+                if col not in self.df.columns
+            ]
+
+            if missing:
+                logging.error(
+                    "Thiếu cột dữ liệu Câu 6: %s",
+                    ", ".join(missing)
+                )
+                return None
+
+            logging.info(
+                "Đang phân tích tính mùa vụ theo phân khúc..."
+            )
+
+            data = self.df[required].copy()
+
+            data["Order Date"] = self._parse_dates(
+                data["Order Date"]
+            )
+
+            data["Sales"] = pd.to_numeric(
+                data["Sales"],
+                errors="coerce"
+            )
+
+            data = data.dropna(
+                subset=["Segment", "Order Date", "Sales"]
+            )
+
+            data["Month"] = data["Order Date"].dt.month
+
+            result = (
+                data.groupby(["Segment", "Month"])["Sales"]
+                .sum()
+                .reset_index()
+            )
+
+            logging.info("Đã hoàn thành phân tích Câu 6.")
+
+            return result
+
         except Exception as e:
-            logging.error(f"Lỗi trong quá trình phân tích tính mùa vụ: {e}")
+            logging.error(
+                "Lỗi phân tích tính mùa vụ theo phân khúc: %s", e
+            )
             return None
+
     # Câu 7
     # ==================================================================
 
