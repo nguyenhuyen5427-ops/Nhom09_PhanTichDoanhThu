@@ -496,6 +496,24 @@ class SalesAnalyzer:
             "cau4": self.analyze_top_subcategory(),
         }
     # ==================================================================
+    def analyze_segment_seasonality(self):
+        """
+        Câu 6: Phân tích và so sánh tính mùa vụ (tháng) theo phân khúc khách hàng
+        """
+        try:
+            if self.df is None:
+                raise ValueError("DataFrame đang trống hoặc chưa được nạp.")
+            
+            logging.info("Đang thực hiện phân tích tính mùa vụ theo phân khúc...")
+            
+            # Gom nhóm dữ liệu theo Segment và Month, tính tổng Sales
+            segment_seasonality = self.df.groupby(['Segment', 'Month'])['Sales'].sum().reset_index()
+            
+            return segment_seasonality
+            
+        except Exception as e:
+            logging.error(f"Lỗi trong quá trình phân tích tính mùa vụ: {e}")
+            return None
     # Câu 7
     # ==================================================================
 
