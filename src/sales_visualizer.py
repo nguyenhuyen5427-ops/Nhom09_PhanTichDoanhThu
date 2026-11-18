@@ -147,7 +147,7 @@ class SalesVisualizer:
         plt.tight_layout()
         plt.savefig(self.output_dir / "cau4_top5_sub_category.png", dpi=300, bbox_inches='tight')
         plt.close(fig)
-def plot_segment_seasonality(self, segment_seasonality):
+    def plot_segment_seasonality(self, segment_seasonality):
         """
         Vẽ biểu đồ so sánh tính mùa vụ (tháng) giữa các phân khúc khách hàng (Câu 6)
         """
