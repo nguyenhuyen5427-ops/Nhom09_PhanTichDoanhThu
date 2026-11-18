@@ -147,3 +147,30 @@ class SalesVisualizer:
         plt.tight_layout()
         plt.savefig(self.output_dir / "cau4_top5_sub_category.png", dpi=300, bbox_inches='tight')
         plt.close(fig)
+def plot_segment_seasonality(self, segment_seasonality):
+        """
+        Vẽ biểu đồ so sánh tính mùa vụ (tháng) giữa các phân khúc khách hàng (Câu 6)
+        """
+        try:
+            if segment_seasonality is None or segment_seasonality.empty:
+                print("Không có dữ liệu để vẽ biểu đồ tính mùa vụ.")
+                return
+            
+            plt.figure(figsize=(12, 6))
+            
+            # Dùng pivot để vẽ biểu đường biểu diễn theo từng Segment
+            pivot_df = segment_seasonality.pivot(index='Month', columns='Segment', values='Sales')
+            pivot_df.plot(kind='line', marker='o', figsize=(12, 6))
+            
+            plt.title('So sánh tính mùa vụ theo tháng giữa các phân khúc khách hàng', fontsize=14)
+            plt.xlabel('Tháng (Month)', fontsize=12)
+            plt.ylabel('Tổng doanh thu (Sales)', fontsize=12)
+            plt.grid(True, linestyle='--', alpha=0.7)
+            plt.legend(title='Phân khúc khách hàng')
+            plt.xticks(range(1, 13))
+            plt.tight_layout()
+            
+            plt.show()
+            
+        except Exception as e:
+            print(f"Lỗi khi vẽ biểu đồ tính mùa vụ: {e}"
