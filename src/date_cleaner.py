@@ -80,4 +80,12 @@ class DateCleaner:
         logger.info("Dòng ngoài khoảng thời gian: %s", out_of_range_rows)
         logger.info("Dòng có Ship Date trước Order Date: %s", ship_before_order_rows)
         logger.info("Số dòng còn lại: %s", len(self.df))
+        # Bổ sung Giai đoạn 1: Tạo Year, Month, Quarter và xử lý Postal Code
+        if 'Order Date' in self.df.columns:
+            self.df['Year'] = self.df['Order Date'].dt.year
+            self.df['Month'] = self.df['Order Date'].dt.month
+            self.df['Quarter'] = self.df['Order Date'].dt.quarter
+            
+        if 'Postal Code' in self.df.columns:
+            self.df['Postal Code'] = self.df['Postal Code'].fillna('00000').astype(str).str.zfill(5)
         return self.df
