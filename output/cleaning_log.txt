@@ -1,8 +1,13 @@
 NHẬT KÝ LÀM SẠCH DỮ LIỆU
 ==================================================
 1. Số dòng: 9800 (gốc) -> 9799 (sạch), giảm 1 dòng
-2. Số cột: 18 (gốc) -> 18 (sạch)
+2. Số cột: 18 (gốc) -> 21 (sạch)
 3. Dòng trùng lặp: 0 (gốc) -> 0 (sạch)
-4. Tổng ô thiếu: 11 (gốc) -> 11 (sạch)
+4. Tổng ô thiếu: 11 (gốc) -> 0 (sạch)
 5. Cột 'Order Date': kiểu dữ liệu str -> datetime64[us]
 6. Cột 'Ship Date': kiểu dữ liệu str -> datetime64[us]
+7. Cột 'Postal Code': ô thiếu 11 -> 0
+8. Cột 'Postal Code': kiểu dữ liệu float64 -> str
+9. Cột 'Year': cột mới được tạo thêm
+10. Cột 'Month': cột mới được tạo thêm
+11. Cột 'Quarter': cột mới được tạo thêm
