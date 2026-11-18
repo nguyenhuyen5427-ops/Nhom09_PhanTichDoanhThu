@@ -74,8 +74,6 @@ class SalesAnalyzer:
             logging.error(f"Lỗi trong quá trình phân tích: {e}")
 
 
-
-
     def analyze_seasonality(self):
         """
         Phân tích tính mùa vụ doanh thu theo tháng và quý.
@@ -497,3 +495,118 @@ class SalesAnalyzer:
             "cau3": self.analyze_region(),
             "cau4": self.analyze_top_subcategory(),
         }
+    # ==================================================================
+    # Câu 7
+    # ==================================================================
+
+    def analyze_top_category_monthly(self, category):
+            #Câu 7: Doanh thu theo tháng 2015–2018 của danh mục đứng đầu Câu 2.
+                try:
+                    if self.df is None or self.df.empty:
+                        logging.warning("Không có dữ liệu để phân tích Câu 7.")
+                        return None
+    
+                    required = ["Category", "Order Date", "Sales"]
+                    missing = [column for column in required if column not in self.df.columns]
+                    if missing:
+                        logging.error("Thiếu cột cần thiết cho Câu 7: %s", ", ".join(missing))
+                        return None
+    
+                    data = self.df[required].copy()
+                    data["Order Date"] = self._parse_dates(data["Order Date"])
+                    data["Sales"] = pd.to_numeric(data["Sales"], errors="coerce")
+                    data = data.dropna(subset=required)
+    
+                    data["Year"] = data["Order Date"].dt.year
+                    data["Month"] = data["Order Date"].dt.month
+                    data = data[
+                        data["Category"].eq(category)
+                        & data["Year"].between(2015, 2018)
+                    ]
+    
+                    if data.empty:
+                        logging.warning(
+                            "Không có dữ liệu 2015–2018 cho danh mục %s.", category
+                        )
+                        return None
+    
+                    years = range(2015, 2019)
+                    months = range(1, 13)
+    
+                    monthly_sales = data.pivot_table(
+                        index="Year",
+                        columns="Month",
+                        values="Sales",
+                        aggfunc="sum",
+                        fill_value=0,
+                    ).reindex(index=years, columns=months, fill_value=0)
+    
+                    # So sánh từng tháng với mức doanh thu trung bình tháng của chính năm đó,
+                    # để hạn chế ảnh hưởng của tăng trưởng giữa các năm.
+                    yearly_monthly_mean = monthly_sales.mean(axis=1)
+                    monthly_index = monthly_sales.div(
+                        yearly_monthly_mean.where(yearly_monthly_mean.ne(0)),
+                        axis=0,
+                    ) * 100
+                    average_index = monthly_index.mean(axis=0)
+    
+                    if average_index.dropna().empty:
+                        logging.warning("Không đủ dữ liệu để đánh giá tính chu kỳ.")
+                        return None
+    
+                    month_names = {month: f"Tháng {month}" for month in months}
+                    monthly_sales.index.name = "Năm"
+                    monthly_sales.columns = [month_names[month] for month in monthly_sales.columns]
+                    monthly_index.columns = [month_names[month] for month in monthly_index.columns]
+                    average_index.index = [month_names[month] for month in average_index.index]
+    
+                    print("\n" + "=" * 55)
+                    print(f"--- CÂU 7: DOANH THU THEO THÁNG - {category} ---")
+                    print("Doanh thu từng tháng (2015–2018):")
+                    print(monthly_sales.round(2).to_string())
+    
+                    print("\nChỉ số theo tháng (100 = mức trung bình tháng của năm):")
+                    print(monthly_index.round(2).to_string())
+    
+                    print("\nChỉ số trung bình tháng qua các năm:")
+                    print(average_index.round(2).to_string())
+    
+                    highest_month = average_index.idxmax()
+                    lowest_month = average_index.idxmin()
+                    print(
+                        f"\nChỉ số trung bình cao nhất: {highest_month} "
+                        f"({average_index.max():.2f}); thấp nhất: {lowest_month} "
+                        f"({average_index.min():.2f})."
+                    )
+    
+                    valid_years = monthly_index.dropna(how="all")
+                    consistently_high = monthly_index.gt(100).sum()
+                    consistently_low = monthly_index.lt(100).sum()
+                    repeated_high = consistently_high[consistently_high >= 3].index.tolist()
+                    repeated_low = consistently_low[consistently_low >= 3].index.tolist()
+    
+                    if repeated_high or repeated_low:
+                        high_text = ", ".join(repeated_high) if repeated_high else "không có tháng nào"
+                        low_text = ", ".join(repeated_low) if repeated_low else "không có tháng nào"
+                        print(
+                            "Nhận xét: Có dấu hiệu mùa vụ; trong ít nhất 3 năm, doanh thu "
+                            f"cao hơn mức trung bình ở {high_text} và thấp hơn mức trung bình "
+                            f"ở {low_text}."
+                        )
+                    else:
+                        print(
+                            "Nhận xét: Chưa thấy mẫu hình mùa vụ ổn định rõ rệt; "
+                            "các tháng cao/thấp không lặp lại trong ít nhất 3 năm."
+                        )
+    
+                    return {
+                        "category": category,
+                        "monthly_sales": monthly_sales,
+                        "monthly_index_by_year": monthly_index,
+                        "average_monthly_index": average_index,
+                        "valid_years": valid_years,
+                    }
+    
+                except Exception as e:
+                    logging.error("Lỗi khi phân tích Câu 7: %s", e)
+                    return None
