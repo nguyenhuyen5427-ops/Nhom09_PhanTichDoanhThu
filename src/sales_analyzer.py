@@ -496,7 +496,7 @@ class SalesAnalyzer:
             "cau4": self.analyze_top_subcategory(),
         }
     # ==================================================================
-    def analyze_segment_seasonality(self):
+     def analyze_segment_seasonality(self):
         """
         Câu 6: Phân tích và so sánh tính mùa vụ (tháng) theo phân khúc khách hàng
         """
