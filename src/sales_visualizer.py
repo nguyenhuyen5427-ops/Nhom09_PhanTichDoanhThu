@@ -173,4 +173,4 @@ class SalesVisualizer:
             plt.show()
             
         except Exception as e:
-            print(f"Lỗi khi vẽ biểu đồ tính mùa vụ: {e}"
+            print(f"Lỗi khi vẽ biểu đồ tính mùa vụ: {e}")
